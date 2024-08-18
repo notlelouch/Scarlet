@@ -35,25 +35,27 @@ func handleConnection(conn net.Conn) {
 	defer conn.Close()
 
 	reader := bufio.NewReader(conn)
-	input, err := reader.ReadString('\n')
-	if err != nil {
-		fmt.Println("Error reading from connection", err)
-		return
-	}
-	fmt.Printf("input is: %s", input)
-	command_lenght, err := reader.ReadString('\n')
-	if err != nil {
-		return
-	}
-	fmt.Printf("input is: %s", command_lenght)
+	for {
+		input, err := reader.ReadString('\n')
+		if err != nil {
+			fmt.Println("Error reading from connection", err)
+			return
+		}
+		fmt.Printf("input is: %s", input)
+		command_lenght, err := reader.ReadString('\n')
+		if err != nil {
+			return
+		}
+		fmt.Printf("input is: %s", command_lenght)
 
-	command, err := reader.ReadString('\n')
-	if err != nil {
-		return
-	}
-	fmt.Printf("input is: %s", command)
-	if strings.TrimSpace(command) == "PING" {
-		// fmt.Fprint(conn, "+PONG\r\n")
-		conn.Write([]byte("+PONG\r\n"))
+		command, err := reader.ReadString('\n')
+		if err != nil {
+			return
+		}
+		fmt.Printf("input command is: %s", command)
+		if strings.TrimSpace(command) == "PING" {
+			// fmt.Fprint(conn, "+PONG\r\n")
+			conn.Write([]byte("+PONG\r\n"))
+		}
 	}
 }
