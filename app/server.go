@@ -26,8 +26,8 @@ func main() {
 		}
 
 		// Handle the connection
-		// go handleConnection(conn)    ####### for handling multiple connections simultaneously
-		handleConnection(conn)
+		go handleConnection(conn) // for handling multiple connections simultaneously
+		// handleConnection(conn)
 	}
 }
 
