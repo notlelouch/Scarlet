@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -36,26 +37,54 @@ func handleConnection(conn net.Conn) {
 
 	reader := bufio.NewReader(conn)
 	for {
-		input, err := reader.ReadString('\n')
+		// Read the first line to determine the type of command
+		line, err := reader.ReadString('\n')
 		if err != nil {
 			fmt.Println("Error reading from connection", err)
 			return
 		}
-		fmt.Printf("input is: %s", input)
-		command_lenght, err := reader.ReadString('\n')
-		if err != nil {
-			return
-		}
-		fmt.Printf("input is: %s", command_lenght)
+		fmt.Printf("Received: %s", line)
 
-		command, err := reader.ReadString('\n')
-		if err != nil {
-			return
-		}
-		fmt.Printf("input command is: %s", command)
-		if strings.TrimSpace(command) == "PING" {
-			// fmt.Fprint(conn, "+PONG\r\n")
-			conn.Write([]byte("+PONG\r\n"))
+		if strings.HasPrefix(line, "*") {
+			// It's an array, parse the number of elements
+			count, _ := strconv.Atoi(strings.TrimSpace(line[1:]))
+
+			// Read each element
+			var command, value string
+			for i := 0; i < count; i++ {
+				// Read the length line
+				_, err := reader.ReadString('\n')
+				if err != nil {
+					fmt.Println("Error reading length:", err)
+					return
+				}
+
+				// Read the actual data
+				data, err := reader.ReadString('\n')
+				if err != nil {
+					fmt.Println("Error reading data:", err)
+					return
+				}
+
+				if i == 0 {
+					command = strings.TrimSpace(data)
+				} else if i == 1 {
+					value = strings.TrimSpace(data)
+				}
+			}
+
+			// Process the command
+			switch command {
+			case "PING":
+				conn.Write([]byte("+PONG\r\n"))
+			case "ECHO":
+				conn.Write([]byte(fmt.Sprintf("$%d\r\n%s\r\n", len(value), value)))
+			default:
+				conn.Write([]byte("-ERR Unknown command\r\n"))
+			}
+		} else {
+			fmt.Println("Unexpected format:", line)
+			conn.Write([]byte("-ERR Protocol error\r\n"))
 		}
 	}
 }
