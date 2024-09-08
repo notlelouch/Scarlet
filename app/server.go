@@ -78,7 +78,11 @@ func handleConnection(conn net.Conn) {
 			case "PING":
 				conn.Write([]byte("+PONG\r\n"))
 			case "ECHO":
-				conn.Write([]byte(fmt.Sprintf("$%d\r\n%s\r\n", len(value), value)))
+				conn.Write([]byte(fmt.Sprintf("$%d\r\n%s\r\n", len(value1), value1)))
+			case "SET":
+				conn.Write([]byte("+OK\r\n"))
+			case "GET":
+				conn.Write([]byte(fmt.Sprintf("$%d\r\n%s\r\n", len(stringStorage[value1]), stringStorage[value1])))
 			default:
 				conn.Write([]byte("-ERR Unknown command\r\n"))
 			}
