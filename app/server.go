@@ -35,6 +35,9 @@ func main() {
 func handleConnection(conn net.Conn) {
 	defer conn.Close()
 
+	// Map storage for the SET and GET commands
+	stringStorage := make(map[string]string)
+
 	reader := bufio.NewReader(conn)
 	for {
 		// Read the first line to determine the type of command
@@ -50,7 +53,7 @@ func handleConnection(conn net.Conn) {
 			count, _ := strconv.Atoi(strings.TrimSpace(line[1:]))
 
 			// Read each element
-			var command, value string
+			var command, value1, value2 string
 			for i := 0; i < count; i++ {
 				// Read the length line
 				_, err := reader.ReadString('\n')
@@ -69,10 +72,14 @@ func handleConnection(conn net.Conn) {
 				if i == 0 {
 					command = strings.TrimSpace(data)
 				} else if i == 1 {
-					value = strings.TrimSpace(data)
+					value1 = strings.TrimSpace(data)
+				} else if i == 2 {
+					value2 = strings.TrimSpace(data)
+					if command == "SET" {
+						stringStorage[value1] = value2
+					}
 				}
 			}
-
 			// Process the command
 			switch command {
 			case "PING":
@@ -86,6 +93,7 @@ func handleConnection(conn net.Conn) {
 			default:
 				conn.Write([]byte("-ERR Unknown command\r\n"))
 			}
+
 		} else {
 			fmt.Println("Unexpected format:", line)
 			conn.Write([]byte("-ERR Protocol error\r\n"))
