@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func main() {
@@ -35,12 +36,15 @@ func main() {
 func handleConnection(conn net.Conn) {
 	defer conn.Close()
 
-	// Map storage for the SET and GET commands
-	stringStorage := make(map[string]string)
+	type storageItem struct {
+		value      string
+		expiryTime time.Time
+	}
+
+	storage := make(map[string]storageItem)
 
 	reader := bufio.NewReader(conn)
 	for {
-		// Read the first line to determine the type of command
 		line, err := reader.ReadString('\n')
 		if err != nil {
 			fmt.Println("Error reading from connection", err)
@@ -49,51 +53,52 @@ func handleConnection(conn net.Conn) {
 		fmt.Printf("Received: %s", line)
 
 		if strings.HasPrefix(line, "*") {
-			// It's an array, parse the number of elements
 			count, _ := strconv.Atoi(strings.TrimSpace(line[1:]))
-
-			// Read each element
-			var command, value1, value2 string
+			var parts []string
 			for i := 0; i < count; i++ {
-				// Read the length line
 				_, err := reader.ReadString('\n')
 				if err != nil {
 					fmt.Println("Error reading length:", err)
 					return
 				}
-
-				// Read the actual data
 				data, err := reader.ReadString('\n')
 				if err != nil {
 					fmt.Println("Error reading data:", err)
 					return
 				}
-
-				if i == 0 {
-					command = strings.TrimSpace(data)
-				} else if i == 1 {
-					value1 = strings.TrimSpace(data)
-				} else if i == 2 {
-					value2 = strings.TrimSpace(data)
-					if command == "SET" {
-						stringStorage[value1] = value2
-					}
-				}
+				parts = append(parts, strings.TrimSpace(data))
 			}
-			// Process the command
+
+			command := strings.ToUpper(parts[0])
 			switch command {
 			case "PING":
 				conn.Write([]byte("+PONG\r\n"))
 			case "ECHO":
-				conn.Write([]byte(fmt.Sprintf("$%d\r\n%s\r\n", len(value1), value1)))
+				conn.Write([]byte(fmt.Sprintf("$%d\r\n%s\r\n", len(parts[1]), parts[1])))
 			case "SET":
+				key, value := parts[1], parts[2]
+				item := storageItem{value: value}
+				if len(parts) > 3 && strings.ToUpper(parts[3]) == "PX" {
+					duration, _ := strconv.Atoi(parts[4])
+					item.expiryTime = time.Now().Add(time.Duration(duration) * time.Millisecond)
+				}
+				storage[key] = item
 				conn.Write([]byte("+OK\r\n"))
 			case "GET":
-				conn.Write([]byte(fmt.Sprintf("$%d\r\n%s\r\n", len(stringStorage[value1]), stringStorage[value1])))
+				key := parts[1]
+				if item, exists := storage[key]; exists {
+					if item.expiryTime.IsZero() || time.Now().Before(item.expiryTime) {
+						conn.Write([]byte(fmt.Sprintf("$%d\r\n%s\r\n", len(item.value), item.value)))
+					} else {
+						delete(storage, key)
+						conn.Write([]byte("$-1\r\n"))
+					}
+				} else {
+					conn.Write([]byte("$-1\r\n"))
+				}
 			default:
 				conn.Write([]byte("-ERR Unknown command\r\n"))
 			}
-
 		} else {
 			fmt.Println("Unexpected format:", line)
 			conn.Write([]byte("-ERR Protocol error\r\n"))
