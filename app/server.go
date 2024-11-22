@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"flag"
 	"fmt"
 	"net"
 	"os"
@@ -17,15 +16,6 @@ func main() {
 		fmt.Println("Failed to bind to port 6379")
 		os.Exit(1)
 	}
-	// Create a custom flag set that ignores unknown flags and captures dir and dbfilename
-	flags := flag.NewFlagSet("", flag.ContinueOnError)
-
-	dir := flags.String("dir", "", "Directory path")
-	dbfilename := flags.String("dbfilename", "", "Database filename")
-
-	flags.Parse(os.Args[1:])
-	fmt.Printf("dir: %s\n", *dir)
-	fmt.Printf("dbfilename: %s\n", *dbfilename)
 
 	defer l.Close()
 
