@@ -16,7 +16,6 @@ func main() {
 		fmt.Println("Failed to bind to port 6379")
 		os.Exit(1)
 	}
-
 	defer l.Close()
 
 	for {
@@ -28,12 +27,12 @@ func main() {
 		}
 
 		// Handle the connection
-		go handleConnection(conn, *dir, *dbfilename) // for handling multiple connections simultaneously
+		go handleConnection(conn) // for handling multiple connections simultaneously
 		// handleConnection(conn)
 	}
 }
 
-func handleConnection(conn net.Conn, dir string, dbfilename string) {
+func handleConnection(conn net.Conn) {
 	defer conn.Close()
 
 	type storageItem struct {
@@ -95,13 +94,6 @@ func handleConnection(conn net.Conn, dir string, dbfilename string) {
 					}
 				} else {
 					conn.Write([]byte("$-1\r\n"))
-				}
-			case "CONFIG":
-				switch parts[2] {
-				case "dir":
-					conn.Write([]byte(fmt.Sprintf("*2\r\n$3\r\ndir\r\n$%d\r\n%s\r\n", len(dir), dir)))
-				case "dbfilename":
-					conn.Write([]byte(fmt.Sprintf("$%d\r\n%s\r\n", len(dbfilename), dbfilename)))
 				}
 			default:
 				conn.Write([]byte("-ERR Unknown command\r\n"))
