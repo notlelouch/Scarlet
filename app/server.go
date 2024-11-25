@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"net"
 	"os"
@@ -11,7 +12,19 @@ import (
 )
 
 func main() {
-	l, err := net.Listen("tcp", "0.0.0.0:6379")
+	// Create a custom flag set that ignores unknown flags and captures dir and dbfilename
+	flags := flag.NewFlagSet("", flag.ContinueOnError)
+
+	port := flags.String("port", "", "port")
+	flags.Parse(os.Args[1:])
+
+	httpPort := *port
+	if httpPort == "" {
+		httpPort = "6379"
+	}
+	fmt.Printf("httpPort: %s\n", httpPort)
+
+	l, err := net.Listen("tcp", "0.0.0.0:"+httpPort)
 	if err != nil {
 		fmt.Println("Failed to bind to port 6379")
 		os.Exit(1)
@@ -36,8 +49,8 @@ func handleConnection(conn net.Conn) {
 	defer conn.Close()
 
 	type storageItem struct {
-		value      string
 		expiryTime time.Time
+		value      string
 	}
 
 	storage := make(map[string]storageItem)
