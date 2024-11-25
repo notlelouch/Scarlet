@@ -48,6 +48,11 @@ func main() {
 func handleConnection(conn net.Conn) {
 	defer conn.Close()
 
+	// Extract the port number on which this connection is running on
+	localAddr := conn.LocalAddr().(*net.TCPAddr)
+	httpPort := strconv.Itoa(localAddr.Port)
+	// fmt.Println(httpPort)
+
 	type storageItem struct {
 		expiryTime time.Time
 		value      string
@@ -107,6 +112,12 @@ func handleConnection(conn net.Conn) {
 					}
 				} else {
 					conn.Write([]byte("$-1\r\n"))
+				}
+			case "INFO":
+				if httpPort == "6379" {
+					conn.Write([]byte("$11\r\nrole:master\r\n"))
+				} else {
+					conn.Write([]byte("$10\r\nrole:slave\r\n"))
 				}
 			default:
 				conn.Write([]byte("-ERR Unknown command\r\n"))
